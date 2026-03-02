@@ -9,7 +9,6 @@ import java.util.List;
 
 public class ProdutoRepository {
 
-    // salvar produto
     public Produto salvar(Produto produto) {
         String sql = "INSERT INTO produtos (nome, quantidade, preco) VALUES (?, ?, ?)";
 
@@ -21,7 +20,6 @@ public class ProdutoRepository {
             stmt.setDouble(3, produto.getPreco());
             stmt.executeUpdate();
 
-            // Recuperar o ID gerado pelo SQLite
             try (Statement stmtId = conn.createStatement();
                     ResultSet rs = stmtId.executeQuery("SELECT last_insert_rowid()")) {
                 if (rs.next()) {
@@ -36,7 +34,6 @@ public class ProdutoRepository {
         return produto;
     }
 
-    // listar todos
     public List<Produto> listarTodos() {
         List<Produto> produtos = new ArrayList<>();
         String sql = "SELECT * FROM produtos";
@@ -56,7 +53,6 @@ public class ProdutoRepository {
         return produtos;
     }
 
-    // buscar por id (código)
     public Produto buscarPorId(Long id) {
         String sql = "SELECT * FROM produtos WHERE id = ?";
 
@@ -77,7 +73,6 @@ public class ProdutoRepository {
         return null;
     }
 
-    // buscar por nome (consulta simples)
     public List<Produto> buscarPorNome(String nome) {
         List<Produto> resultado = new ArrayList<>();
         String sql = "SELECT * FROM produtos WHERE LOWER(nome) LIKE ?";
@@ -99,7 +94,6 @@ public class ProdutoRepository {
         return resultado;
     }
 
-    // helper: mapear ResultSet para Produto
     private Produto mapearProduto(ResultSet rs) throws SQLException {
         Produto p = new Produto();
         p.setId(rs.getLong("id"));
@@ -107,5 +101,43 @@ public class ProdutoRepository {
         p.setQuantidade(rs.getInt("quantidade"));
         p.setPreco(rs.getDouble("preco"));
         return p;
+    }
+
+    public void adicionarEstoque(Long id, int quantidade) throws Exception {
+        Produto p = buscarPorId(id);
+        if (p == null) {
+            throw new Exception("Produto não encontrado.");
+        }
+        String sql = "UPDATE produtos SET quantidade = quantidade + ? WHERE id = ?";
+        try (Connection conn = ConexaoBanco.getConexao();
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, quantidade);
+            stmt.setLong(2, id);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("Erro ao adicionar estoque: " + e.getMessage());
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void removerEstoque(Long id, int quantidade) throws Exception {
+        Produto p = buscarPorId(id);
+        if (p == null) {
+            throw new Exception("Produto não encontrado com o ID fornecido.");
+        }
+        if (p.getQuantidade() < quantidade) {
+            throw new Exception("Saldo insuficiente! Quantidade em estoque: " + p.getQuantidade());
+        }
+
+        String sql = "UPDATE produtos SET quantidade = quantidade - ? WHERE id = ?";
+        try (Connection conn = ConexaoBanco.getConexao();
+                PreparedStatement stmt = conn.prepareStatement(sql)) {
+            stmt.setInt(1, quantidade);
+            stmt.setLong(2, id);
+            stmt.executeUpdate();
+        } catch (SQLException e) {
+            System.err.println("Erro ao remover estoque: " + e.getMessage());
+            throw new RuntimeException(e);
+        }
     }
 }

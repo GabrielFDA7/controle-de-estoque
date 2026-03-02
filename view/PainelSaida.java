@@ -6,14 +6,13 @@ import repository.ProdutoRepository;
 import javax.swing.*;
 import java.awt.*;
 
-public class PainelCadastro extends JPanel {
+public class PainelSaida extends JPanel {
 
-    private final JTextField campoNome;
+    private final JTextField campoIdProduto;
     private final JTextField campoQuantidade;
-    private final JTextField campoPreco;
     private final ProdutoRepository repositorio;
 
-    public PainelCadastro() {
+    public PainelSaida() {
         repositorio = new ProdutoRepository();
         setLayout(new GridBagLayout());
         setBorder(EstiloApp.criarBordaPainel());
@@ -24,7 +23,8 @@ public class PainelCadastro extends JPanel {
         gbc.fill = GridBagConstraints.HORIZONTAL;
 
         // Título
-        JLabel titulo = EstiloApp.criarTitulo("Cadastro de Novo Produto");
+        JLabel titulo = EstiloApp.criarTitulo("📤 Registro de Saída de Mercadorias");
+        titulo.setForeground(EstiloApp.VERMELHO);
         gbc.gridx = 0;
         gbc.gridy = 0;
         gbc.gridwidth = 2;
@@ -34,20 +34,20 @@ public class PainelCadastro extends JPanel {
         gbc.gridwidth = 1;
         gbc.insets = new Insets(10, 10, 10, 10);
 
-        // Nome
-        JLabel lblNome = EstiloApp.criarLabel("Nome:");
+        // ID do Produto
+        JLabel lblId = EstiloApp.criarLabel("ID do Produto:");
         gbc.gridx = 0;
         gbc.gridy = 1;
         gbc.weightx = 0;
-        add(lblNome, gbc);
+        add(lblId, gbc);
 
-        campoNome = EstiloApp.criarCampoTexto(20);
+        campoIdProduto = EstiloApp.criarCampoTexto(20);
         gbc.gridx = 1;
         gbc.weightx = 1.0;
-        add(campoNome, gbc);
+        add(campoIdProduto, gbc);
 
         // Quantidade
-        JLabel lblQtd = EstiloApp.criarLabel("Quantidade:");
+        JLabel lblQtd = EstiloApp.criarLabel("Quantidade Saída:");
         gbc.gridx = 0;
         gbc.gridy = 2;
         gbc.weightx = 0;
@@ -58,24 +58,12 @@ public class PainelCadastro extends JPanel {
         gbc.weightx = 1.0;
         add(campoQuantidade, gbc);
 
-        // Preço
-        JLabel lblPreco = EstiloApp.criarLabel("Preço (R$):");
-        gbc.gridx = 0;
-        gbc.gridy = 3;
-        gbc.weightx = 0;
-        add(lblPreco, gbc);
-
-        campoPreco = EstiloApp.criarCampoTexto(20);
-        gbc.gridx = 1;
-        gbc.weightx = 1.0;
-        add(campoPreco, gbc);
-
         // Botões
         JPanel painelBotoes = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
         EstiloApp.estilizarPainel(painelBotoes);
 
-        JButton btnSalvar = EstiloApp.criarBotaoPrimario("Salvar");
-        btnSalvar.addActionListener(e -> salvarProduto());
+        JButton btnSalvar = EstiloApp.criarBotaoVermelho("Registrar Saída");
+        btnSalvar.addActionListener(e -> registrarSaida());
 
         JButton btnLimpar = EstiloApp.criarBotaoSecundario("Limpar");
         btnLimpar.addActionListener(e -> limparCampos());
@@ -84,71 +72,58 @@ public class PainelCadastro extends JPanel {
         painelBotoes.add(btnLimpar);
 
         gbc.gridx = 0;
-        gbc.gridy = 4;
+        gbc.gridy = 3;
         gbc.gridwidth = 2;
         gbc.insets = new Insets(30, 10, 10, 10);
         add(painelBotoes, gbc);
     }
 
-    private void salvarProduto() {
-        String nome = campoNome.getText().trim();
+    private void registrarSaida() {
+        String idTexto = campoIdProduto.getText().trim();
         String qtdTexto = campoQuantidade.getText().trim();
-        String precoTexto = campoPreco.getText().trim().replace(",", ".");
 
-        if (nome.isEmpty()) {
+        if (idTexto.isEmpty() || qtdTexto.isEmpty()) {
             JOptionPane.showMessageDialog(this,
-                    "O nome do produto é obrigatório.",
+                    "Os campos de ID e Quantidade são obrigatórios.",
                     "Campo obrigatório", JOptionPane.WARNING_MESSAGE);
-            campoNome.requestFocus();
+            return;
+        }
+
+        long id;
+        try {
+            id = Long.parseLong(idTexto);
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this, "O ID deve ser numérico.", "Erro", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
         int quantidade;
         try {
             quantidade = Integer.parseInt(qtdTexto);
-            if (quantidade < 0)
+            if (quantidade <= 0)
                 throw new NumberFormatException();
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this,
                     "Quantidade deve ser um número inteiro positivo.",
                     "Valor inválido", JOptionPane.WARNING_MESSAGE);
-            campoQuantidade.requestFocus();
-            return;
-        }
-
-        double preco;
-        try {
-            preco = Double.parseDouble(precoTexto);
-            if (preco < 0)
-                throw new NumberFormatException();
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this,
-                    "Preço deve ser um número válido (ex: 19.90).",
-                    "Valor inválido", JOptionPane.WARNING_MESSAGE);
-            campoPreco.requestFocus();
             return;
         }
 
         try {
-            Produto produto = new Produto(nome, quantidade, preco);
-            repositorio.salvar(produto);
-
+            repositorio.removerEstoque(id, quantidade);
+            Produto p = repositorio.buscarPorId(id);
             JOptionPane.showMessageDialog(this,
-                    "Produto cadastrado com sucesso!\nID: " + produto.getId(),
+                    "Saída registrada com sucesso!\nProduto: " + p.getNome() + "\nNovo saldo: " + p.getQuantidade(),
                     "Sucesso", JOptionPane.INFORMATION_MESSAGE);
-
             limparCampos();
         } catch (Exception e) {
-            JOptionPane.showMessageDialog(this,
-                    "Erro ao salvar produto: " + e.getMessage(),
-                    "Erro", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, e.getMessage(), "Erro Validando Saldo", JOptionPane.ERROR_MESSAGE);
         }
     }
 
     private void limparCampos() {
-        campoNome.setText("");
+        campoIdProduto.setText("");
         campoQuantidade.setText("");
-        campoPreco.setText("");
-        campoNome.requestFocus();
+        campoIdProduto.requestFocus();
     }
 }
